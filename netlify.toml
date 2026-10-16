@@ -8,3 +8,15 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "no-referrer"
     X-Frame-Options = "DENY"
+
+# Permanent Angorfa inspection address.
+[[redirects]]
+  from = "/angorfa"
+  to = "/index.html"
+  status = 200
+
+# Temporary landing page until the MCN Standards portal is built.
+[[redirects]]
+  from = "/"
+  to = "/angorfa"
+  status = 302
