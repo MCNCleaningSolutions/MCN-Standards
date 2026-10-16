@@ -1,0 +1,1 @@
+const {valid}=require('./_auth');exports.handler=async e=>({statusCode:valid(e)?200:401,body:JSON.stringify({authenticated:valid(e)})});

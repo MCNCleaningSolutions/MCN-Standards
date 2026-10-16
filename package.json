@@ -1,0 +1,11 @@
+{
+  "name": "angorfa-standards",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo static-site"
+  },
+  "dependencies": {
+    "pdfkit": "^0.17.2"
+  }
+}
