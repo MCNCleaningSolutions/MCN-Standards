@@ -31,7 +31,7 @@ exports.handler = async (event) => {
   try { data = JSON.parse(event.body || '{}'); }
   catch { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid submission' }) }; }
 
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(data.date || '') ||
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date || '') ||
       typeof data.completedBy !== 'string' || !data.completedBy.trim() || data.completedBy.length > 120 ||
       typeof data.issues !== 'string' || data.issues.length > 4000 ||
       !Array.isArray(data.answers) || data.answers.length !== 20 ||
