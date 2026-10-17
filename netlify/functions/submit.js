@@ -42,7 +42,9 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ error: 'Please complete all 20 checks' }) };
   }
 
-  // Test-only: no email integration is implemented.
+  // Email test mode: the recipient is fixed server-side to Chris only.
+  // Do not enable external/client delivery without explicit approval.
+
   const doc = new PDFDocument({ size: 'A4', margin: 42, bufferPages: true, autoFirstPage: true });
   const chunks = [];
   doc.on('data', c => chunks.push(c));
@@ -73,7 +75,7 @@ exports.handler = async (event) => {
     y += 119;
     doc.roundedRect(M, y, CW, 27, 7).fill(CREAM);
     doc.font('Helvetica-Bold').fontSize(9).fillColor(GREEN);
-    text('TEST MODE  •  PDF DOWNLOAD ONLY  •  NOT EMAILED', M + 12, y + 8, { width: CW - 24 });
+    text('TEST MODE  •  EMAIL TO MCN ONLY  •  NOT SENT TO CLIENT', M + 12, y + 8, { width: CW - 24 });
     y += 40;
   };
 
@@ -174,6 +176,44 @@ exports.handler = async (event) => {
 
   doc.end();
   await done;
+
+  const pdf = Buffer.concat(chunks);
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    return { statusCode: 503, body: JSON.stringify({ error: 'Email test is not configured. No report was sent.' }) };
+  }
+
+  const emailPayload = {
+    from: 'MCN Standards <standards@mcncleaningsolutions.com>',
+    to: ['chris@mcncleaningsolutions.com'],
+    reply_to: 'chris@mcncleaningsolutions.com',
+    subject: 'TEST – Angorfa Changeover Inspection – ' + data.date,
+    text: 'MCN Standards email delivery test. This report has been sent only to Chris.\n\nProperty: Angorfa\nInspection date: ' + data.date + '\nCompleted by: ' + data.completedBy.trim() + '\nChecks passed: ' + passed + '/20\nNeeds attention: ' + flagged + '\n\nThe completed inspection PDF is attached.\n\nTEST MODE: No client email has been sent.',
+    attachments: [{ filename: 'angorfa-check-' + data.date + '.pdf', content: pdf.toString('base64') }]
+  };
+
+  let response;
+  try {
+    response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'angorfa-test-' + require('crypto').createHash('sha256').update(event.body || '').digest('hex')
+      },
+      body: JSON.stringify(emailPayload),
+      signal: AbortSignal.timeout(12000)
+    });
+  } catch (err) {
+    console.error('Resend test delivery failed:', err.message);
+    return { statusCode: 502, body: JSON.stringify({ error: 'Could not send the test email. Please try again later.' }) };
+  }
+
+  if (!response.ok) {
+    console.error('Resend test delivery rejected:', response.status, (await response.text()).slice(0, 500));
+    return { statusCode: 502, body: JSON.stringify({ error: 'Email provider rejected the test report. No client email was sent.' }) };
+  }
+
   return {
     statusCode: 200,
     isBase64Encoded: true,
@@ -182,6 +222,6 @@ exports.handler = async (event) => {
       'Content-Disposition': 'attachment; filename="angorfa-check.pdf"',
       'Cache-Control': 'no-store'
     },
-    body: Buffer.concat(chunks).toString('base64')
+    body: pdf.toString('base64')
   };
 };
