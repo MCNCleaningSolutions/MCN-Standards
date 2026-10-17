@@ -213,13 +213,48 @@ exports.handler = async (event) => {
     return { statusCode: 503, body: JSON.stringify({ error: 'Email test is not configured. No report was sent.' }) };
   }
 
+  const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[ch]);
+  const dateDisplay = new Date(data.date + 'T12:00:00Z').toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'
+  });
+  const summary = flagged === 0
+    ? 'All 20 checks have been marked as satisfactory by the person completing the inspection.'
+    : passed + ' of 20 checks have been marked as satisfactory. ' + flagged + ' ' +
+      (flagged === 1 ? 'item has' : 'items have') + ' been identified as requiring attention.';
+  const emailText = 'Hi Dave,\n\nA housekeeping inspection has been completed at Angorfa. Please find the report attached.\n\n' +
+    'Inspection Summary\n\nProperty: Angorfa\nInspection Date: ' + dateDisplay +
+    '\nCompleted By: ' + data.completedBy.trim() + '\nChecks Passed: ' + passed +
+    '/20\nItems Requiring Attention: ' + flagged + '\n\n' + summary +
+    '\n\nThe attached PDF contains the full checklist, any reported issues and supporting photographs where provided.\n\n' +
+    'Kind regards,\nMCN Standards';
+  const emailHtml = '<!doctype html><html><body style="margin:0;padding:24px;background:#f6f5f1;font-family:Arial,Helvetica,sans-serif;color:#18201f">' +
+    '<div style="max-width:620px;margin:0 auto;background:#fff;border:1px solid #dfe3df;border-radius:12px;padding:28px">' +
+    '<p>Hi Dave,</p><p>A housekeeping inspection has been completed at Angorfa. Please find the report attached.</p>' +
+    '<h2 style="font-size:17px;color:#244c45;margin-top:26px">Inspection Summary</h2>' +
+    '<table style="border-collapse:collapse;width:100%;font-size:14px;line-height:1.7">' +
+    [['Property','Angorfa'],['Inspection Date',dateDisplay],['Completed By',data.completedBy.trim()],
+      ['Checks Passed',passed+'/20'],['Items Requiring Attention',String(flagged)]]
+      .map(([k,v])=>'<tr><td style="padding:5px 12px 5px 0;color:#66706d">'+escapeHtml(k)+'</td><td style="padding:5px 0;font-weight:bold">'+escapeHtml(v)+'</td></tr>').join('') +
+    '</table><p style="line-height:1.6">'+escapeHtml(summary)+'</p>' +
+    '<p style="line-height:1.6">The attached PDF contains the full checklist, any reported issues and supporting photographs where provided.</p>' +
+    '<p style="margin-top:25px">Kind regards,<br><strong>MCN Standards</strong></p>' +
+    '<div style="margin-top:22px;padding-top:16px;border-top:1px solid #dfe3df">' +
+    '<img src="cid:mcn-standards-logo" alt="MCN Cleaning Solutions" width="96" style="display:block;width:96px;height:auto;border:0"></div>' +
+    '</div></body></html>';
   const emailPayload = {
     from: 'MCN Standards <standards@mcncleaningsolutions.com>',
+    // Internal preview only. Dave is not a recipient until separately authorised.
     to: ['chris@mcncleaningsolutions.com'],
     reply_to: 'chris@mcncleaningsolutions.com',
-    subject: 'Angorfa Changeover Inspection – ' + data.date,
-    text: 'MCN Standards email delivery test. This report has been sent only to Chris.\n\nProperty: Angorfa\nInspection date: ' + data.date + '\nCompleted by: ' + data.completedBy.trim() + '\nChecks passed: ' + passed + '/20\nNeeds attention: ' + flagged + '\n\nThe completed inspection PDF is attached.\n\nClient email delivery is not enabled.',
-    attachments: [{ filename: 'angorfa-check-' + data.date + '.pdf', content: pdf.toString('base64') }]
+    subject: 'Angorfa | Housekeeping Inspection Report | ' + dateDisplay,
+    text: emailText,
+    html: emailHtml,
+    attachments: [
+      { filename: 'angorfa-check-' + data.date + '.pdf', content: pdf.toString('base64') },
+      { filename: 'mcn-logo.png', content: LOGO_PNG.toString('base64'), content_id: 'mcn-standards-logo' }
+    ]
   };
 
   let response;
@@ -229,7 +264,7 @@ exports.handler = async (event) => {
       headers: {
         'Authorization': 'Bearer ' + apiKey,
         'Content-Type': 'application/json',
-        'Idempotency-Key': 'angorfa-test-' + require('crypto').createHash('sha256').update(event.body || '').digest('hex')
+        'Idempotency-Key': 'angorfa-email-v2-' + require('crypto').createHash('sha256').update(event.body || '').digest('hex')
       },
       body: JSON.stringify(emailPayload),
       signal: AbortSignal.timeout(12000)
