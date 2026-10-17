@@ -52,7 +52,7 @@ exports.handler = async (event) => {
   const totalPhotoBytes = photos.reduce((sum,group)=>sum+group.reduce((n,src)=>n+src.length,0),0);
   if(totalPhotoBytes > 4500000) return { statusCode: 413, body: JSON.stringify({ error: 'Photos are too large. Please remove some photos and retry.' }) };
 
-  // Email test mode: recipient is fixed server-side to Chris only. Resend credential is read at runtime from Netlify Functions environment variables.
+  // Live internal delivery: recipient is fixed server-side to Chris only. Resend credential is read at runtime from Netlify Functions environment variables.
   // Do not enable external/client delivery without explicit approval.
 
   const doc = new PDFDocument({ size: 'A4', margin: 42, bufferPages: true, autoFirstPage: true });
@@ -85,7 +85,7 @@ exports.handler = async (event) => {
     y += 119;
     doc.roundedRect(M, y, CW, 27, 7).fill(CREAM);
     doc.font('Helvetica-Bold').fontSize(9).fillColor(GREEN);
-    text('TEST MODE  •  EMAIL TO MCN ONLY  •  NOT SENT TO CLIENT', M + 12, y + 8, { width: CW - 24 });
+    text('MCN STANDARDS  •  INSPECTION REPORT', M + 12, y + 8, { width: CW - 24 });
     y += 40;
   };
 
@@ -217,8 +217,8 @@ exports.handler = async (event) => {
     from: 'MCN Standards <standards@mcncleaningsolutions.com>',
     to: ['chris@mcncleaningsolutions.com'],
     reply_to: 'chris@mcncleaningsolutions.com',
-    subject: 'TEST – Angorfa Changeover Inspection – ' + data.date,
-    text: 'MCN Standards email delivery test. This report has been sent only to Chris.\n\nProperty: Angorfa\nInspection date: ' + data.date + '\nCompleted by: ' + data.completedBy.trim() + '\nChecks passed: ' + passed + '/20\nNeeds attention: ' + flagged + '\n\nThe completed inspection PDF is attached.\n\nTEST MODE: No client email has been sent.',
+    subject: 'Angorfa Changeover Inspection – ' + data.date,
+    text: 'MCN Standards email delivery test. This report has been sent only to Chris.\n\nProperty: Angorfa\nInspection date: ' + data.date + '\nCompleted by: ' + data.completedBy.trim() + '\nChecks passed: ' + passed + '/20\nNeeds attention: ' + flagged + '\n\nThe completed inspection PDF is attached.\n\nClient email delivery is not enabled.',
     attachments: [{ filename: 'angorfa-check-' + data.date + '.pdf', content: pdf.toString('base64') }]
   };
 
@@ -241,7 +241,7 @@ exports.handler = async (event) => {
 
   if (!response.ok) {
     console.error('Resend test delivery rejected:', response.status, (await response.text()).slice(0, 500));
-    return { statusCode: 502, body: JSON.stringify({ error: 'Email provider rejected the test report. No client email was sent.' }) };
+    return { statusCode: 502, body: JSON.stringify({ error: 'Email provider rejected the inspection report. No client email was sent.' }) };
   }
 
   return {
