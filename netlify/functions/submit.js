@@ -245,8 +245,8 @@ exports.handler = async (event) => {
     '</div></body></html>';
   const emailPayload = {
     from: 'MCN Standards <standards@mcncleaningsolutions.com>',
-    // Internal preview only. Dave is not a recipient until separately authorised.
-    to: ['chris@mcncleaningsolutions.com'],
+    // Live client delivery: Dave is the sole recipient.
+    to: ['dave@coastalholidays.net'],
     reply_to: 'chris@mcncleaningsolutions.com',
     subject: 'Angorfa | Housekeeping Inspection Report | ' + dateDisplay,
     text: emailText,
