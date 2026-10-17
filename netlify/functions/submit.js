@@ -42,6 +42,16 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ error: 'Please complete all 20 checks' }) };
   }
 
+  // Validate optional section photos before PDF generation. Images are browser-compressed JPEGs.
+  const photos = data.photos === undefined ? sections.map(() => []) : data.photos;
+  if (!Array.isArray(photos) || photos.length !== sections.length ||
+      photos.some(group => !Array.isArray(group) || group.length > 3 ||
+        group.some(src => typeof src !== 'string' || !/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(src) || src.length > 900000))) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid inspection photos. Please use up to 3 images per section.' }) };
+  }
+  const totalPhotoBytes = photos.reduce((sum,group)=>sum+group.reduce((n,src)=>n+src.length,0),0);
+  if(totalPhotoBytes > 4500000) return { statusCode: 413, body: JSON.stringify({ error: 'Photos are too large. Please remove some photos and retry.' }) };
+
   // Email test mode: recipient is fixed server-side to Chris only. Resend credential is read at runtime from Netlify Functions environment variables.
   // Do not enable external/client delivery without explicit approval.
 
@@ -131,6 +141,26 @@ exports.handler = async (event) => {
       doc.font('Helvetica-Bold').fontSize(8.3).fillColor(a.answer === 'yes' ? GREEN : RED);
       text(status, M + 20, pillY + 5, { width: pillW - 14 });
       y += boxH + 8;
+    }
+    if (photos[s].length) {
+      ensure(30);
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(GREEN);
+      text('PHOTOGRAPHIC EVIDENCE', M + 2, y + 2);
+      y += 24;
+      for (const src of photos[s]) {
+        const buffer = Buffer.from(src.slice('data:image/jpeg;base64,'.length), 'base64');
+        try {
+          const image = doc.openImage(buffer);
+          const maxW = CW, maxH = 300;
+          const ratio = Math.min(maxW / image.width, maxH / image.height, 1);
+          const w = image.width * ratio, h = image.height * ratio;
+          ensure(h + 20);
+          doc.image(buffer, M + (CW - w) / 2, y, { width:w, height:h });
+          y += h + 17;
+        } catch (e) {
+          return { statusCode:400, body:JSON.stringify({error:'One photo could not be read. Please remove it and try again.'}) };
+        }
+      }
     }
     y += 10;
   }
