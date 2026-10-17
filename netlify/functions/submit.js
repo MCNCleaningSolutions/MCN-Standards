@@ -151,7 +151,7 @@ exports.handler = async (event) => {
         const buffer = Buffer.from(src.slice('data:image/jpeg;base64,'.length), 'base64');
         try {
           const image = doc.openImage(buffer);
-          const maxW = CW, maxH = 300;
+          const maxW = 260, maxH = 175;
           const ratio = Math.min(maxW / image.width, maxH / image.height, 1);
           const w = image.width * ratio, h = image.height * ratio;
           ensure(h + 20);
@@ -198,10 +198,10 @@ exports.handler = async (event) => {
   const pages = doc.bufferedPageRange();
   for (let i = 0; i < pages.count; i++) {
     doc.switchToPage(pages.start + i);
-    doc.moveTo(M, H - 51).lineTo(W - M, H - 51).strokeColor(LINE).lineWidth(0.7).stroke();
+    doc.moveTo(M, H - 62).lineTo(W - M, H - 62).strokeColor(LINE).lineWidth(0.7).stroke();
     doc.font('Helvetica').fontSize(8).fillColor(MUTED);
-    text('MCN Cleaning Solutions LTD  •  Angorfa Standards', M, H - 41, { width: CW - 70 });
-    text('Page ' + (i + 1) + ' of ' + pages.count, W - M - 70, H - 41, { width: 70, align: 'right' });
+    text('MCN Cleaning Solutions LTD  •  Angorfa Standards', M, H - 55, { width: CW - 70, lineBreak: false });
+    text('Page ' + (i + 1) + ' of ' + pages.count, W - M - 70, H - 55, { width: 70, align: 'right', lineBreak: false });
   }
 
   doc.end();
