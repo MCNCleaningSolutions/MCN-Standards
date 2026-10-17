@@ -42,7 +42,7 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ error: 'Please complete all 20 checks' }) };
   }
 
-  // Email test mode: the recipient is fixed server-side to Chris only.
+  // Email test mode: recipient is fixed server-side to Chris only. Resend credential is read at runtime from Netlify Functions environment variables.
   // Do not enable external/client delivery without explicit approval.
 
   const doc = new PDFDocument({ size: 'A4', margin: 42, bufferPages: true, autoFirstPage: true });
